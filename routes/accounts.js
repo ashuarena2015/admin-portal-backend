@@ -93,24 +93,21 @@ routerAccount.post("/verify", async (req, res) => {
         const { otp, email, password } = req.body;
         if (otp) {
             // Check If User Exists In The Database
-            const user = await AccountCreation.findOne({ email, isVerified: false });
+            const user = await AccountCreation.findOne({ email, isVerified: false, verify_otp: otp });
             if(user) {
-                console.log('user & verified false');
                 const defaultPassoword = generateUUID();
-                console.log({defaultPassoword});
                 // 🔹 Hash the password with a salt
                 const saltRounds = 10;
                 const hashedPassword = await bcrypt.hash(defaultPassoword, saltRounds);
-                console.log({hashedPassword});
                 const newUser = await AccountCreation.findOneAndUpdate(
                     {
-                        email
+                        email,
+                        verify_otp: otp
                     },
                     {
                         password: hashedPassword,
                         isVerified: true
-                    },
-                    { new: true, upsert: true } // Create if not found
+                    }
                 );
                 console.log({newUser});
                 await transporter.sendMail({
@@ -134,10 +131,8 @@ routerAccount.post("/verify", async (req, res) => {
         } 
         if (password) {
             const user = await AccountCreation.findOne({ email, isVerified: true });
-            console.log('pass user', user);
             // Compare Passwords
             const passwordMatch = await bcrypt.compare(password, user.password);
-
             if(!user || !passwordMatch) {
                 return res.status(401).json({ message: "Invalid username or password" });
             }
